@@ -1,5 +1,7 @@
 """
 Class to generate lognormal conditioned simulations or just new correlated lognormal simulations.
+
+We assume correlated part is Gaussian, while uncorrelated is lognormal.
 """
 
 from plancklens import shts
@@ -51,12 +53,12 @@ class LognormalConditionedSims(conditionedsims.ConditionedSims):
         clsg = trfutils.cls_to_gcls(cls, self.alpha_matrix)
         return utils.SpectraGetter(clsg, self.get_AB.realized_field_index)
 
-    def _get_gaussian_alms(self, seed: int, input_alms: np.ndarray, nside: int):
-        alms = super().generate_alm(seed, input_alms, nside = nside)
+    def _get_gaussian_alms(self, seed: int, input_alms: np.ndarray):
+        alms = super().generate_alm(seed, input_alms)
         return alms
        
-    def generate_maps(self, seed: int, input_alms: np.ndarray, nside: int, cast_to_nside_lmax: False):
-        alms = self._get_gaussian_alms(seed, input_alms, nside = nside if cast_to_nside_lmax else None)
+    def generate_maps(self, seed: int, input_alms: np.ndarray, nside: int):
+        alms = self._get_gaussian_alms(seed, input_alms)
         alm2map = lambda alm: shts.alm2map(alm.copy(), nside)
         maps_gaussian = list(map(alm2map, alms))
         vargauss = np.array([np.var(m) for m in maps_gaussian])
@@ -77,7 +79,7 @@ class LognormalConditionedSims(conditionedsims.ConditionedSims):
         y_kappa_lm = shts.map2alm(y_kappa.copy(), lmax = nside*3-1)
         return y_kappa_lm
 
-    def generate_alm(self, seed: int, input_alms: np.ndarray, nside: int, lmax = None, out_real: bool = False, process: bool = False, cast_to_nside_lmax: bool = False):
+    def generate_alm(self, seed: int, input_alms: np.ndarray, nside: int, lmax = None, out_real: bool = False, process: bool = False):
         """
         Generates the conditioned Lognormal simulations.
         """
@@ -85,7 +87,7 @@ class LognormalConditionedSims(conditionedsims.ConditionedSims):
         input_alms = self._process_input(input_alms, nside) if process else input_alms
         
         lmax = 3*nside-1 if lmax is None else lmax
-        maps = self.generate_maps(seed, input_alms, nside, cast_to_nside_lmax)
+        maps = self.generate_maps(seed, input_alms, nside)
         map2alm = lambda m: shts.map2alm(m.copy(), lmax)
         result = list(map(map2alm, maps))
         result = (result, maps) if out_real else result
