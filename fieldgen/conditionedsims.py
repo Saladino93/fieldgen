@@ -48,7 +48,7 @@ class ConditionedSims(object):
         return shts.map2alm(mappa.copy(), lmax = lmax)
         #return hp.map2alm(mappa, lmax)
 
-    def generate_alm(self, seed: int, input_alms: np.ndarray, nside: int = None):
+    def generate_alm(self, seed: int, input_alms: np.ndarray, nside: int = None, l_break: int = None, l_high: int = None):
         """
         Generates the conditioned Gaussian simulations.
         """
@@ -59,9 +59,10 @@ class ConditionedSims(object):
         np.random.seed(seed = seed)
         correlated_alms = self.get_correlated_part(input_alms, self.filter_correlated)
 
-        uncorrelated_alms = self.get_uncorrelated_part(input_alms, self.filter_uncorrelated, nside, self.gg_parts)
+        uncorrelated_alms = self.get_uncorrelated_part(input_alms, self.filter_uncorrelated, nside, self.gg_parts, l_break = l_break, l_high = l_high)
 
         correlated_alms = correlated_alms if nside is None else utils.list_alm_copy(correlated_alms, hp.Alm.getlmax(correlated_alms[0].size), 3*nside-1, 3*nside-1)
+        correlated_alms = list(map(lambda x: hp.almxfl(x, np.arange(hp.Alm.getlmax(x.size))<l_break), correlated_alms))
         total_alms = [np.nan_to_num(u+c) for u, c in zip(uncorrelated_alms, correlated_alms)]
 
         return total_alms
@@ -88,25 +89,26 @@ class ConditionedSims(object):
         correlated_alms = [hp.sphtfunc.almxfl(input_alms, filter_) for filter_ in filters]
         return correlated_alms
 
-    def get_uncorrelated_part(self, input_alms: np.ndarray, uncorr_cov_part: list, nside: int = None, gg_parts: list = None) -> np.ndarray:
+    def get_uncorrelated_part(self, input_alms: np.ndarray, uncorr_cov_part: list, nside: int = None, gg_parts: list = None, l_break: float = None, l_high: float = None) -> np.ndarray:
         '''
         uncorr_cov_part = $\Sigma_g = \Sigma_{{g_\mathrm{i}}{g_\mathrm{j}}}-\frac{\vec{C}^{\kappa g}\vec{C}^{\kappa g,T}}{C^{\kappa\kappa}}$
         '''
-
-        lmax = hp.Alm.getlmax(input_alms.size)
-
+        l_high = 3*nside if l_high is None else l_high
+        l_break = hp.Alm.getlmax(input_alms.size) if l_break is None else l_break
+        assert l_break <= l_high, (l_break, l_high)
         #would be better to put in when getting lists..., cleaner
-        if (nside is not None) and (lmax < 3*nside-1):
+        if (nside is not None) and (l_break < 3*nside):
+            #print("Getting uncorrelated part")
             for i in range(len(uncorr_cov_part)):
-                lmax_n = 3*nside-1
+                lmax_n = 3*nside
                 zeros = np.zeros(lmax_n)
-                zeros[:lmax] = uncorr_cov_part[i][:lmax]
-                zeros[lmax:lmax_n] = gg_parts[i][lmax:lmax_n]
+                zeros[:l_break] = uncorr_cov_part[i][:l_break]
+                zeros[l_break:lmax_n] = gg_parts[i][l_break:lmax_n]
                 #if kappa is band limitied, and its lmax is smaller than the required resolution, generate extra power spectra
                 uncorr_cov_part[i] = zeros
             lmax = lmax_n
 
-        uncorrelated_alms = hp.sphtfunc.synalm(uncorr_cov_part, lmax = lmax, new = True)
+        uncorrelated_alms = hp.sphtfunc.synalm(uncorr_cov_part, lmax = lmax-1, new = True)
 
         return uncorrelated_alms
 
