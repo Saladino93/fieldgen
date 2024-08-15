@@ -37,8 +37,10 @@ def xi2cl(xis: np.ndarray, closed = False):
     return Clsout
 
 
-def cls_to_gcls(cls: np.ndarray, alpha_matrix: np.ndarray):
+def cls_to_gcls(cls: np.ndarray, alpha_matrix: np.ndarray, set_negative_to_zero = False):
     xisinput = cl2xi(cls)/alpha_matrix[..., None]
+    if set_negative_to_zero:
+        xisinput[1+xisinput<0] = 0
     xigaussian = np.log(xisinput+1)
     clgaussian = xi2cl(xigaussian)
     return clgaussian

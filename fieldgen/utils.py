@@ -12,6 +12,7 @@ import scipy
 import healpy as hp
 
 
+
 def list_alm_copy(alm_list: np.ndarray or list, mmaxin:int or None, lmaxout:int, mmaxout:int):
     if type(alm_list) == list:
         return [alm_copy(a, mmaxin, lmaxout, mmaxout) for a in alm_list]

@@ -102,6 +102,9 @@ def get_lambda_from_mappa(mappa: np.ndarray):
 suppress = lambda l, lsup, supindex: np.exp(-1.0*np.power(l/lsup, supindex))
 
 def process_cl(inputcl: np.ndarray, lsup: float = 7000, supindex: float = 10):
-    ls = np.arange(0, len(inputcl))
-    result = inputcl*suppress(ls, lsup, supindex)
+    ndim = inputcl.ndim
+    ls = np.arange(0, len(inputcl)) if ndim == 1 else np.arange(0, inputcl[..., ].shape[-1])
+    print(suppress(ls, lsup, supindex))
+    result = inputcl*suppress(ls, lsup, supindex)[None, None, :]
     return result
+

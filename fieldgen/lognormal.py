@@ -9,7 +9,7 @@ from . import utils, logutils, conditionedsims, trfutils
 
 class LognormalConditionedSims(conditionedsims.ConditionedSims):
 
-    def __init__(self, Nfields: int, get_AB: utils.SpectraGetter, lambdas: np.ndarray, means_of_fields: np.ndarray, realized_field_index: int = None):
+    def __init__(self, Nfields: int, get_AB: utils.SpectraGetter, lambdas: np.ndarray, means_of_fields: np.ndarray, realized_field_index: int = None, set_negative_to_zero = False):
         """
         Parameters
         ----------
@@ -23,6 +23,8 @@ class LognormalConditionedSims(conditionedsims.ConditionedSims):
             Array of lambda parameters for the lognormal fields. The first element is the lambda for the realized field, the others are for the other fields.
         means_of_fields: np.ndarray
             Array of the means of the fields. The first element is the mean of the realized field, the others are for the other fields.
+        set_negative_to_zero: bool
+            If True, set negative values of rescaled correlation functions to zero.
         """
 
         self.lambdas = lambdas
@@ -38,17 +40,17 @@ class LognormalConditionedSims(conditionedsims.ConditionedSims):
         self.alpha_matrix = np.nan_to_num(alpha_matrix)
 
         self.get_AB = get_AB
-        self.get_AB_gaussian = self._transform_cls_getter_to_gaussian()
+        self.get_AB_gaussian = self._transform_cls_getter_to_gaussian(set_negative_to_zero)
 
         super().__init__(Nfields, self.get_AB_gaussian, realized_field_index)
 
 
-    def _transform_cls_getter_to_gaussian(self):
+    def _transform_cls_getter_to_gaussian(self, set_negative_to_zero = False):
         """
         Transforms the power spectra getter to a getter for the Gaussian field related to the lognormal field.
         """
         cls = self.get_AB.cls
-        clsg = trfutils.cls_to_gcls(cls, self.alpha_matrix)
+        clsg = trfutils.cls_to_gcls(cls, self.alpha_matrix, set_negative_to_zero = set_negative_to_zero)
         return utils.SpectraGetter(clsg, self.get_AB.realized_field_index)
 
     def _get_gaussian_alms(self, seed: int, input_alms: np.ndarray, nside: int):
